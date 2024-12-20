@@ -298,5 +298,3 @@ Para dúvidas ou sugestões, entre em contato pelo nosso grupo de WhatsApp:
 
 **DTComponentes 2:** https://chat.whatsapp.com/DWuCUTRdWbND4biPWUyChH
 ```
-
-Se precisar de algo mais, é só avisar! 🚀
