@@ -1,0 +1,50 @@
+unit Unit6;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls,DTRest4D;
+
+type
+  TForm6 = class(TForm)
+    mResult: TMemo;
+    edtUrlBase: TEdit;
+    Label1: TLabel;
+    edtResource: TEdit;
+    Label2: TLabel;
+    Button1: TButton;
+    mLog: TMemo;
+    Label3: TLabel;
+    Label4: TLabel;
+    procedure Button1Click(Sender: TObject);
+  private
+      procedure Log( msg : string);
+  public
+
+  end;
+
+var
+  Form6: TForm6;
+
+implementation
+
+{$R *.dfm}
+
+procedure TForm6.Button1Click(Sender: TObject);
+var
+Request : TDTRestRequest;
+begin
+     Request := TDTRestRequest.New
+                  .BaseURL(edtUrlBase.Text)
+                  .Resource(edtResource.Text)
+                  .ContentType('application/json')
+                  .EnableLogging(log)
+end;
+
+procedure TForm6.Log(msg: string);
+begin
+     mLog.Lines.Add(msg);
+end;
+
+end.
