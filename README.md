@@ -1,8 +1,3 @@
-Parece que houve um problema ao recuperar o arquivo diretamente. Vou gerar o conteúdo atualizado para você aqui. Um momento enquanto faço isso.
-
-Aqui está a versão atualizada do arquivo `README.md` com exemplos detalhados:
-
-```markdown
 # 🌐 **DTRest4D**
 
 `DTRest4D` é uma biblioteca poderosa para facilitar o consumo de APIs REST no Delphi, com suporte avançado para:
@@ -299,7 +294,9 @@ Esta biblioteca é distribuída sob a licença MIT. Consulte o arquivo `LICENSE`
 ---
 
 ## **✉️ Contato**
-Para dúvidas ou sugestões, entre em contato pelo e-mail: `suporte@exemplo.com`.
+Para dúvidas ou sugestões, entre em contato pelo nosso grupo de WhatsApp:
+
+**DTComponentes 2:** https://chat.whatsapp.com/DWuCUTRdWbND4biPWUyChH
 ```
 
 Se precisar de algo mais, é só avisar! 🚀
