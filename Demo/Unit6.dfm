@@ -30,7 +30,7 @@ object Form6: TForm6
   end
   object Label3: TLabel
     Left = 8
-    Top = 403
+    Top = 343
     Width = 41
     Height = 15
     Caption = 'Eventos'
@@ -46,7 +46,7 @@ object Form6: TForm6
     Left = 8
     Top = 88
     Width = 478
-    Height = 309
+    Height = 249
     Color = 4276545
     Font.Charset = ANSI_CHARSET
     Font.Color = clWhite
@@ -76,7 +76,7 @@ object Form6: TForm6
     Text = '01001000/json/'
   end
   object Button1: TButton
-    Left = 427
+    Left = 429
     Top = 28
     Width = 59
     Height = 25
@@ -87,9 +87,9 @@ object Form6: TForm6
   end
   object mLog: TMemo
     Left = 8
-    Top = 424
+    Top = 364
     Width = 478
-    Height = 67
+    Height = 127
     Color = 4276545
     Font.Charset = ANSI_CHARSET
     Font.Color = clWhite

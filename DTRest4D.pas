@@ -3,8 +3,14 @@ unit DTRest4D;
 interface
 
 uses
-  System.SysUtils, System.Classes, REST.Client, REST.Types, REST.Json,
-  System.Generics.Collections;
+  System.SysUtils,
+  System.Classes,
+  REST.Client,
+  REST.Types,
+  REST.Json,
+  REST.Authenticator.Basic,
+  System.Generics.Collections,
+  System.NetEncoding;
 
 type
   TProgressEvent = reference to procedure(AProgress: Integer);
@@ -14,17 +20,20 @@ type
     ['{B8A78964-4F62-47E3-B752-45CC4A4C9D88}']
 
     // Configuração
-    function BaseURL(const AURL: string): IDTRestRequest;
-    function Resource(const AResource: string): IDTRestRequest;
-    function AddHeader(const AName, AValue: string): IDTRestRequest;
-    function AddQueryParam(const AName, AValue: string): IDTRestRequest;
-    function Accept(const AValue: string): IDTRestRequest;
-    function ContentType(const AValue: string): IDTRestRequest;
-    function UseOAuth2(const AToken: string): IDTRestRequest;
-    function UseJWT(const AToken: string): IDTRestRequest;
+    function BaseURL(const AURL: string; ADotEncode: Boolean = False): IDTRestRequest;
+    function Resource(const AResource: string; ADotEncode: Boolean = False): IDTRestRequest;
+    function AddHeader(const AName, AValue: string; ADotEncode: Boolean = False): IDTRestRequest;
+    function AddQueryParam(const AName, AValue: string; ADotEncode: Boolean = False): IDTRestRequest;
+    function Accept(const AValue: string; ADotEncode: Boolean = False): IDTRestRequest;
+    function ContentType(const AValue: string; ADotEncode: Boolean = False): IDTRestRequest;
+    function UseOAuth2(const AToken: string; ADotEncode: Boolean = False): IDTRestRequest;
+    function UseJWT(const AToken: string; ADotEncode: Boolean = False): IDTRestRequest;
     function EnableLogging(const ALogCallback: TProc<string>): IDTRestRequest;
     function AddMiddleware(AMiddleware: TMiddleware): IDTRestRequest;
     function OnProgress(AOnProgress: TProgressEvent): IDTRestRequest;
+    function Timeout(const ATimeoutMS: Integer): IDTRestRequest;
+    function BasicAuthentication(const AUsername, APassword: string; ADotEncode: Boolean = False): IDTRestRequest;
+    function UseDecodeResponse(const AUseDecodeResponse: Boolean): IDTRestRequest;
 
     // Métodos HTTP
     function Post(const ABody: string): string;
@@ -51,25 +60,31 @@ type
     FLogCallback: TProc<string>;
     FProgressCallback: TProgressEvent;
     FMiddlewares: TList<TMiddleware>;
+    FUseDecodeResponse: Boolean;
     procedure Log(const AMessage: string);
     procedure ExecuteMiddlewares;
+    function DotEncode(const AValue: string): string;
+    function DotDecode(const AValue: string): string;
   public
     constructor Create;
     destructor Destroy; override;
     class function New: IDTRestRequest;
 
     // Configuração
-    function BaseURL(const AURL: string): IDTRestRequest;
-    function Resource(const AResource: string): IDTRestRequest;
-    function AddHeader(const AName, AValue: string): IDTRestRequest;
-    function AddQueryParam(const AName, AValue: string): IDTRestRequest;
-    function Accept(const AValue: string): IDTRestRequest;
-    function ContentType(const AValue: string): IDTRestRequest;
-    function UseOAuth2(const AToken: string): IDTRestRequest;
-    function UseJWT(const AToken: string): IDTRestRequest;
+    function BaseURL(const AURL: string; ADotEncode: Boolean = False): IDTRestRequest;
+    function Resource(const AResource: string; ADotEncode: Boolean = False): IDTRestRequest;
+    function AddHeader(const AName, AValue: string; ADotEncode: Boolean = False): IDTRestRequest;
+    function AddQueryParam(const AName, AValue: string; ADotEncode: Boolean = False): IDTRestRequest;
+    function Accept(const AValue: string; ADotEncode: Boolean = False): IDTRestRequest;
+    function ContentType(const AValue: string; ADotEncode: Boolean = False): IDTRestRequest;
+    function UseOAuth2(const AToken: string; ADotEncode: Boolean = False): IDTRestRequest;
+    function UseJWT(const AToken: string; ADotEncode: Boolean = False): IDTRestRequest;
     function EnableLogging(const ALogCallback: TProc<string>): IDTRestRequest;
     function AddMiddleware(AMiddleware: TMiddleware): IDTRestRequest;
     function OnProgress(AOnProgress: TProgressEvent): IDTRestRequest;
+    function Timeout(const ATimeoutMS: Integer): IDTRestRequest;
+    function BasicAuthentication(const AUsername, APassword: string; ADotEncode: Boolean = False): IDTRestRequest;
+    function UseDecodeResponse(const AUseDecodeResponse: Boolean): IDTRestRequest;
 
     // Métodos HTTP
     function Post(const ABody: string): string;
@@ -98,6 +113,7 @@ begin
   FRequest := TRESTRequest.Create(nil);
   FResponse := TRESTResponse.Create(nil);
   FMiddlewares := TList<TMiddleware>.Create;
+  FUseDecodeResponse := False;
 
   FRequest.Client := FClient;
   FRequest.Response := FResponse;
@@ -131,60 +147,139 @@ begin
     FLogCallback(AMessage);
 end;
 
-function TDTRestRequest.BaseURL(const AURL: string): IDTRestRequest;
+function TDTRestRequest.DotEncode(const AValue: string): string;
 begin
-  Result := Self;
-  FClient.BaseURL := AURL;
-  Log('BaseURL set to: ' + AURL);
+  // Utiliza a codificação padrão do REST para URL encoding
+  Result := TNetEncoding.URL.Encode(AValue);
 end;
 
-function TDTRestRequest.Resource(const AResource: string): IDTRestRequest;
+function TDTRestRequest.DotDecode(const AValue: string): string;
 begin
-  Result := Self;
-  FRequest.Resource := AResource;
-  Log('Resource set to: ' + AResource);
+  // Utiliza a decodificação padrão do REST para URL decoding
+  Result := TNetEncoding.URL.Decode(AValue);
 end;
 
-function TDTRestRequest.AddHeader(const AName, AValue: string): IDTRestRequest;
+function TDTRestRequest.BaseURL(const AURL: string; ADotEncode: Boolean = False): IDTRestRequest;
+var
+  URL: string;
 begin
   Result := Self;
-  FRequest.Params.AddHeader(AName, AValue);
-  Log(Format('Header added: %s=%s', [AName, AValue]));
+  if ADotEncode then
+    URL := DotEncode(AURL)
+  else
+    URL := AURL;
+
+  FClient.BaseURL := URL;
+  Log('BaseURL set to: ' + URL);
 end;
 
-function TDTRestRequest.AddQueryParam(const AName, AValue: string): IDTRestRequest;
+function TDTRestRequest.Resource(const AResource: string; ADotEncode: Boolean = False): IDTRestRequest;
+var
+  ResourceValue: string;
 begin
   Result := Self;
-  FRequest.Params.AddItem(AName, AValue, pkGETorPOST);
-  Log(Format('Query parameter added: %s=%s', [AName, AValue]));
+  if ADotEncode then
+    ResourceValue := DotEncode(AResource)
+  else
+    ResourceValue := AResource;
+
+  FRequest.Resource := ResourceValue;
+  Log('Resource set to: ' + ResourceValue);
 end;
 
-function TDTRestRequest.Accept(const AValue: string): IDTRestRequest;
+function TDTRestRequest.AddHeader(const AName, AValue: string; ADotEncode: Boolean = False): IDTRestRequest;
+var
+  HeaderValue: string;
 begin
   Result := Self;
-  FRequest.Accept := AValue;
-  Log('Accept set to: ' + AValue);
+  if ADotEncode then
+    HeaderValue := DotEncode(AValue)
+  else
+    HeaderValue := AValue;
+
+  FRequest.Params.AddHeader(AName, HeaderValue);
+  Log(Format('Header added: %s=%s (DotEncode: %s)', [AName, HeaderValue, BoolToStr(ADotEncode, True)]));
 end;
 
-function TDTRestRequest.ContentType(const AValue: string): IDTRestRequest;
+function TDTRestRequest.AddQueryParam(const AName, AValue: string; ADotEncode: Boolean = False): IDTRestRequest;
+var
+  Name, Value: string;
 begin
   Result := Self;
-  FRequest.Params.ParameterByName('Content-Type').Value := AValue;
-  Log('Content-Type set to: ' + AValue);
+
+  if ADotEncode then
+  begin
+    Name := DotEncode(AName);
+    Value := DotEncode(AValue);
+  end
+  else
+  begin
+    Name := AName;
+    Value := AValue;
+  end;
+
+  FRequest.Params.AddItem(Name, Value, pkGETorPOST);
+  Log(Format('Query parameter added: %s=%s (DotEncode: %s)', [Name, Value, BoolToStr(ADotEncode, True)]));
 end;
 
-function TDTRestRequest.UseOAuth2(const AToken: string): IDTRestRequest;
+function TDTRestRequest.Accept(const AValue: string; ADotEncode: Boolean = False): IDTRestRequest;
+var
+  Value: string;
 begin
   Result := Self;
-  FRequest.Params.AddHeader('Authorization', 'Bearer ' + AToken);
-  Log('OAuth2 token added.');
+
+  if ADotEncode then
+    Value := DotEncode(AValue)
+  else
+    Value := AValue;
+
+  FRequest.Accept := Value;
+  Log(Format('Accept set to: %s (DotEncode: %s)', [Value, BoolToStr(ADotEncode, True)]));
 end;
 
-function TDTRestRequest.UseJWT(const AToken: string): IDTRestRequest;
+function TDTRestRequest.ContentType(const AValue: string; ADotEncode: Boolean = False): IDTRestRequest;
+var
+  Value: string;
 begin
   Result := Self;
-  FRequest.Params.AddHeader('Authorization', 'JWT ' + AToken);
-  Log('JWT token added.');
+
+  if ADotEncode then
+    Value := DotEncode(AValue)
+  else
+    Value := AValue;
+
+  FRequest.Params.ParameterByName('Content-Type').Value := Value;
+  Log(Format('Content-Type set to: %s (DotEncode: %s)', [Value, BoolToStr(ADotEncode, True)]));
+end;
+
+function TDTRestRequest.UseOAuth2(const AToken: string; ADotEncode: Boolean = False): IDTRestRequest;
+var
+  Token: string;
+begin
+  Result := Self;
+
+  if ADotEncode then
+    Token := DotEncode(AToken)
+  else
+    Token := AToken;
+
+  FRequest.Params.AddHeader('Authorization', 'Bearer ' + Token);
+  Log(Format('OAuth2 token added (DotEncode: %s).', [BoolToStr(ADotEncode, True)]));
+end;
+
+function TDTRestRequest.UseJWT(const AToken: string; ADotEncode: Boolean = False): IDTRestRequest;
+var
+  Token: string;
+begin
+  Result := Self;
+
+  if ADotEncode then
+    Token := DotEncode(AToken)
+  else
+    Token := AToken;
+
+  FRequest.Params.AddHeader('Authorization', 'JWT ' + Token);
+  Log(Format('JWT token added (DotEncode: %s).', [BoolToStr(ADotEncode, True)]));
 end;
 
 function TDTRestRequest.EnableLogging(const ALogCallback: TProc<string>): IDTRestRequest;
@@ -207,6 +302,43 @@ begin
   FProgressCallback := AOnProgress;
 end;
 
+function TDTRestRequest.Timeout(const ATimeoutMS: Integer): IDTRestRequest;
+begin
+  Result := Self;
+  FRequest.Timeout := ATimeoutMS;
+  Log(Format('Timeout set to: %d ms', [ATimeoutMS]));
+end;
+
+function TDTRestRequest.BasicAuthentication(const AUsername, APassword: string; ADotEncode: Boolean = False): IDTRestRequest;
+var
+  Username, Password: string;
+begin
+  Result := Self;
+
+  if ADotEncode then
+  begin
+    Username := DotEncode(AUsername);
+    Password := DotEncode(APassword);
+  end
+  else
+  begin
+    Username := AUsername;
+    Password := APassword;
+  end;
+
+  FRequest.Client.Authenticator := nil;
+  FRequest.Client.Authenticator := THTTPBasicAuthenticator.Create(Username, Password);
+  Log(Format('Basic Authentication set with username: %s (DotEncode: %s)',
+    [Username, BoolToStr(ADotEncode, True)]));
+end;
+
+function TDTRestRequest.UseDecodeResponse(const AUseDecodeResponse: Boolean): IDTRestRequest;
+begin
+  Result := Self;
+  FUseDecodeResponse := AUseDecodeResponse;
+  Log(Format('Response decoding set to: %s', [BoolToStr(AUseDecodeResponse, True)]));
+end;
+
 function TDTRestRequest.Post(const ABody: string): string;
 begin
   FRequest.Method := rmPOST;
@@ -216,8 +348,17 @@ begin
   ExecuteMiddlewares;
   Log('POST request initiated with body: ' + ABody);
   FRequest.Execute;
-  Log('Response: ' + FResponse.Content);
-  Result := FResponse.Content;
+
+  if FUseDecodeResponse then
+  begin
+    Result := DotDecode(FResponse.Content);
+    Log('Decoded Response: ' + Result);
+  end
+  else
+  begin
+    Result := FResponse.Content;
+    Log('Response: ' + Result);
+  end;
 end;
 
 function TDTRestRequest.Put(const ABody: string): string;
@@ -228,8 +369,17 @@ begin
   ExecuteMiddlewares;
   Log('PUT request initiated with body: ' + ABody);
   FRequest.Execute;
-  Log('Response: ' + FResponse.Content);
-  Result := FResponse.Content;
+
+  if FUseDecodeResponse then
+  begin
+    Result := DotDecode(FResponse.Content);
+    Log('Decoded Response: ' + Result);
+  end
+  else
+  begin
+    Result := FResponse.Content;
+    Log('Response: ' + Result);
+  end;
 end;
 
 function TDTRestRequest.Patch(const ABody: string): string;
@@ -240,8 +390,17 @@ begin
   ExecuteMiddlewares;
   Log('PATCH request initiated with body: ' + ABody);
   FRequest.Execute;
-  Log('Response: ' + FResponse.Content);
-  Result := FResponse.Content;
+
+  if FUseDecodeResponse then
+  begin
+    Result := DotDecode(FResponse.Content);
+    Log('Decoded Response: ' + Result);
+  end
+  else
+  begin
+    Result := FResponse.Content;
+    Log('Response: ' + Result);
+  end;
 end;
 
 function TDTRestRequest.Delete(const ABody: string): string;
@@ -252,8 +411,17 @@ begin
   ExecuteMiddlewares;
   Log('DELETE request initiated with body: ' + ABody);
   FRequest.Execute;
-  Log('Response: ' + FResponse.Content);
-  Result := FResponse.Content;
+
+  if FUseDecodeResponse then
+  begin
+    Result := DotDecode(FResponse.Content);
+    Log('Decoded Response: ' + Result);
+  end
+  else
+  begin
+    Result := FResponse.Content;
+    Log('Response: ' + Result);
+  end;
 end;
 
 function TDTRestRequest.Get: string;
@@ -262,8 +430,17 @@ begin
   ExecuteMiddlewares;
   Log('GET request initiated.');
   FRequest.Execute;
-  Log('Response: ' + FResponse.Content);
-  Result := FResponse.Content;
+
+  if FUseDecodeResponse then
+  begin
+    Result := DotDecode(FResponse.Content);
+    Log('Decoded Response: ' + Result);
+  end
+  else
+  begin
+    Result := FResponse.Content;
+    Log('Response: ' + Result);
+  end;
 end;
 
 function TDTRestRequest.Head: TRESTResponse;
@@ -282,7 +459,17 @@ begin
   ExecuteMiddlewares;
   Log('File upload initiated: ' + AFileName);
   FRequest.Execute;
-  Result := FResponse.Content;
+
+  if FUseDecodeResponse then
+  begin
+    Result := DotDecode(FResponse.Content);
+    Log('Decoded Response: ' + Result);
+  end
+  else
+  begin
+    Result := FResponse.Content;
+    Log('Response: ' + Result);
+  end;
 end;
 
 function TDTRestRequest.DownloadFile(const AResource: string; const AStream: TStream): Boolean;
@@ -342,4 +529,3 @@ begin
 end;
 
 end.
-

@@ -39,10 +39,12 @@ begin
      mLog.Lines.Clear;
      mResult.Lines.Clear;
 
-     Request := TDTRestRequest.New
+  Request := TDTRestRequest.New
                   .BaseURL(edtUrlBase.Text)
-                  .Resource(edtResource.Text)
+                  .Resource(edtResource.Text)  // endpoint
                   .Accept('application/json')
+                  .Timeout(10000)
+                  .UseDecodeResponse(True)
                   .EnableLogging(log); // log de eventos
 
     mResult.Lines.Add(Request.Get);
